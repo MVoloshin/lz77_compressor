@@ -202,7 +202,6 @@ void uncompressData(unsigned int file_size, unsigned char* data, fstream &file_o
         else {
             myLink.offset = 0;
             myLink.next = (unsigned char)data[i+1];
-            cout << myLink.next << endl;
         }
         i=i+2;
     }
