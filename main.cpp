@@ -156,6 +156,7 @@ void compressData(unsigned int file_size, unsigned char* data, fstream &file_out
 
 void uncompressData(unsigned int file_size, unsigned char* data, fstream &file_out)
 {
+    if(file_size==0) return;
     link myLink;
     vector<unsigned char> lz77_decoded;
     lz77_decoded.reserve(4*file_size);
