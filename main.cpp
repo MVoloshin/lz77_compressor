@@ -1,9 +1,7 @@
 #include <iostream>
 #include <fstream>
-#include <cstring>
 #include <vector>
-
-using namespace std;
+#include <iomanip>
 
 unsigned int max_buf_length=0;
 unsigned int max_dict_length=0;
@@ -51,20 +49,20 @@ class LinkedList
     }
 };
 
-unsigned int readFile(unsigned char* &raw, fstream &inp)
+unsigned int readFile(unsigned char*& raw, std::fstream& inp)
 {
-    inp.seekg(0, ios::beg);
+    inp.seekg(0, std::ios::beg);
     unsigned int file_start = inp.tellg();
-    inp.seekg(0, ios::end);
+    inp.seekg(0, std::ios::end);
     unsigned int file_end = inp.tellg();
     unsigned int file_size = file_end - file_start;
-    inp.seekg(0, ios::beg);
+    inp.seekg(0, std::ios::beg);
     raw = new unsigned char[file_size];
     inp.read((char*)raw, file_size);
     return file_size;
 }
 
-void FindLongestMatch(unsigned char* s, unsigned int buf_start, unsigned short &len, unsigned short &off, LinkedList dict[])
+void FindLongestMatch(unsigned char* s, unsigned int buf_start, unsigned short& len, unsigned short& off, LinkedList dict[])
 {
     Node* current = dict[s[buf_start]].lastNode;
     unsigned int max_offset = buf_start - cur_dict_length;
@@ -103,7 +101,7 @@ int UpdateDictionary(unsigned char* s, unsigned int shift_start, unsigned short 
     return Length;
 }
 
-void compactAndWriteLink(link inp, vector<unsigned char> &out)
+void compactAndWriteLink(const link& inp, std::vector<unsigned char>& out)
 {
         if(inp.length!=0)
         {
@@ -117,15 +115,15 @@ void compactAndWriteLink(link inp, vector<unsigned char> &out)
         out.push_back(inp.next);
 }
 
-void compressData(unsigned int file_size, unsigned char* data, fstream &file_out)
+void compressData(unsigned int file_size, unsigned char* data, std::fstream& file_out)
 {
     LinkedList dict[256];
     link myLink;
-    vector<unsigned char> lz77_coded;
+    std::vector<unsigned char> lz77_coded;
     lz77_coded.reserve(2*file_size);
     bool hasOddSymbol=false;
     unsigned int target_size = 0;
-    file_out.seekp(0, ios_base::beg);
+    file_out.seekp(0, std::ios_base::beg);
     cur_dict_length = 0;
     cur_buf_length = max_buf_length;
     for(unsigned int i=0; i<file_size; i++)
@@ -150,20 +148,20 @@ void compressData(unsigned int file_size, unsigned char* data, fstream &file_out
    target_size=lz77_coded.size();
    file_out.write((char*)lz77_coded.data(), target_size);
    lz77_coded.clear();
-   printf("Output file size: %d bytes\n", target_size);
-   printf("Compression ratio: %.3Lf:1\n", ((double)file_size/(double)target_size));
+   std::cout << "Output file size: " << target_size << " bytes" << std::endl;
+   std::cout << std::setprecision(3) << "Compression ratio: " << (double)file_size/(double)target_size << ":1" << std::endl;
 }
 
-void uncompressData(unsigned int file_size, unsigned char* data, fstream &file_out)
+void uncompressData(unsigned int file_size, unsigned char* data, std::fstream& file_out)
 {
-    if(file_size==0) { printf("Error! Input file is empty\n"); return; }
+    if(file_size==0) { std::cerr << "Error! Input file is empty!" << std::endl; return; }
     link myLink;
-    vector<unsigned char> lz77_decoded;
+    std::vector<unsigned char> lz77_decoded;
     lz77_decoded.reserve(4*file_size);
     unsigned int target_size = 0;
     unsigned int i=0;
     int k=0;
-    file_out.seekg(0, ios::beg);
+    file_out.seekg(0, std::ios::beg);
     while(i<(file_size-1))
     {
         if(i!=0) { lz77_decoded.push_back(myLink.next); }
@@ -173,12 +171,17 @@ void uncompressData(unsigned int file_size, unsigned char* data, fstream &file_o
             myLink.offset = (unsigned short)(data[i] & 0xF);
             myLink.offset = myLink.offset << 8;
             myLink.offset = myLink.offset | (unsigned short)data[i+1];
-            myLink.next = (unsigned char)data[i+2];
             if(myLink.offset>lz77_decoded.size()) {
-             printf("Error! Offset is out of range!");
+             std::cerr << "Error! Offset is out of range!" << std::endl;
              lz77_decoded.clear();
              return;
              }
+            if((i+2)<file_size) myLink.next = (unsigned char)data[i+2];
+            else {
+                std::cerr << "Error! Unexpected EOF!" << std::endl;
+                lz77_decoded.clear();
+                return;
+            }
             if(myLink.length>myLink.offset)
             {
             k = myLink.length;
@@ -210,49 +213,49 @@ void uncompressData(unsigned int file_size, unsigned char* data, fstream &file_o
     target_size = lz77_decoded.size();
     file_out.write((char*)lz77_decoded.data(), target_size);
     lz77_decoded.clear();
-    printf("Output file size: %d bytes\n", target_size);
-    printf("Unpacking finished!");
+    std::cout << "Output file size: " << target_size << " bytes" << std::endl;
+    std::cout << "Unpacking finished!" << std::endl;
 }
 
 int main(int argc, char* argv[])
 {
     max_buf_length=15; //16-1;
     max_dict_length=4095; //4096-1
-    string filename_in ="";
-    string filename_out="";
-    fstream file_in;
-    fstream file_out;
+    std::string filename_in ="";
+    std::string filename_out="";
+    std::fstream file_in;
+    std::fstream file_out;
     unsigned int raw_size = 0;
     unsigned char* raw = nullptr;
     int mode = 0;
-    printf("Simple LZ77 compression/decompression program\n");
-    printf("Coded by MVoloshin, TSU, 2020\n");
+    std::cout << "Simple LZ77 compression/decompression program" << std::endl;
+    std::cout << "Coded by MVoloshin, TSU, 2020" << std::endl;
     if(argc==4) {
-        if(strcmp(argv[1], "-u")==0) mode = 0;
-        else if(strcmp(argv[1], "-c")==0) mode = 1;
-        else { printf("Unknown parameter, use -c or -u\n"); return 0; }
+        if(std::string(argv[1])=="-u") mode = 0;
+        else if(std::string(argv[1])=="-c") mode = 1;
+        else { std::cerr << "Unknown parameter, use -c or -u" << std::endl; return 0; }
         filename_in=std::string(argv[2]);
         filename_out=std::string(argv[3]);
     }
     else
     {
-        printf("Usage: [-c | -u] [input_file] [output_file]\n");
+        std::cout << "Usage: [-c | -u] [input_file] [output_file]" << std::endl;
         return 0;
     }
-    file_in.open(filename_in, ios::in | ios::binary);
-    file_in.unsetf(ios_base::skipws);
-    file_out.open(filename_out, ios::out);
+    file_in.open(filename_in, std::ios::in | std::ios::binary);
+    file_in.unsetf(std::ios_base::skipws);
+    file_out.open(filename_out, std::ios::out);
     file_out.close();
-    file_out.open(filename_out, ios::in | ios::out | ios::binary);
-    file_out.unsetf(ios_base::skipws);
+    file_out.open(filename_out, std::ios::in | std::ios::out | std::ios::binary);
+    file_out.unsetf(std::ios_base::skipws);
    if(file_in && file_out) {
    raw_size=readFile(raw, file_in);
-   printf("Input file size: %d bytes\n", raw_size);
+   std::cout << "Input file size: " << raw_size << " bytes" << std::endl;
    }
    else
    {
-        if(!file_in) printf("Error! Couldn't open input file!\n");
-        if(!file_out) printf("Error! Couldn't open output file!\n");
+        if(!file_in) std::cerr << "Error! Couldn't open input file!" << std::endl;
+        if(!file_out) std::cerr << "Error! Couldn't open output file!" << std::endl;
         mode = -1;
    }
    file_in.close();
